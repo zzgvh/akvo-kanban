@@ -1,0 +1,470 @@
+{% load i18n %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+    <head>
+        <title>
+            kanban
+        </title>
+        <script src="{{MEDIA_URL}}jquery/jquery-1.4.2.js" type="text/javascript"></script>
+        <script src="{{MEDIA_URL}}raphael/raphael.js" type="text/javascript"></script>
+        <script src="{{MEDIA_URL}}raphaelle/raphaelle.js" type="text/javascript"></script>
+        <script src="{{MEDIA_URL}}json/json2.js" type="text/javascript"></script>
+        <script src="{{MEDIA_URL}}jquery.fancybox-1.3.1/fancybox/jquery.fancybox-1.3.1.js" type="text/javascript"></script>
+        
+        <link rel="stylesheet" href="{{MEDIA_URL}}jquery.fancybox-1.3.1/fancybox/jquery.fancybox-1.3.1.css" type="text/css" media="screen" />
+        
+        <style type="text/css" rel="stylesheet" media="screen">
+        #frame {
+        position: absolute; overflow: auto; border: 1px solid #d1d1d2;
+        top: 10px; left: 10px; right: 10px; bottom: 10px;
+        }
+        #content { position: absolute; overflow: auto; top: 0; right: 0; bottom: 0; left: 0; }
+        </style>
+
+    </head>
+
+    <body>
+        <!--<div>
+            <a href="#" id="a_task">Task</a>
+        </div>
+        <div>
+            <a href="#" id="a_tile">Tile</a>
+        </div>
+        <div>
+            <a href="#" id="a_section">Section</a>
+        </div>-->
+
+        <div id="frame" style="clear:both;">
+            <div id="content">
+            </div>
+        </div>
+        <div style="display:none;">
+            <div id="task_form">
+                <form method="post">
+                    <p>
+                        <label for="user_id">{% trans 'Owner:' %}</label>
+                        <select id="user_id" name="user_id"></select>
+                    </p>
+                    <p>
+                        <textarea wrap="physical" cols="20" name="title" rows="5">Enter the task description</textarea>
+                    </p>
+                    <p><input type="submit" value="Create task"/></p>
+                </form>
+            </div>
+        </div>
+        <a id="inline" href="#task_form" style="position:absolute; left:130px; top:29px; vertical-align:middle; text-decoration:none; font-family:helvetica;">New task</a>
+
+
+        <script type="text/javascript">
+
+            $(document).ready(function() {
+                
+                var theUsers; //global list of users 
+
+                var TILE_WIDTH = 100;
+                var TILE_HEIGHT = 500;
+                var TILE_STROKE = "666666";
+                var SECTION_SEPARATION = 10;
+                var SECTION_TOP = 50;
+                var SECTION_HEIGHT = 70;
+                var RADIUS = 5;
+                var OVERLAP = 5;
+                var BIG_FONT_SZ = 16;
+                var MEDIUM_FONT_SZ = 14;
+                var SMALLISH_FONT_SZ = 12;
+                var SMALL_FONT_SZ = 10;
+                var HORIZONTAL_MARGIN = 12;
+                var VERTICAL_MARGIN = 8;
+                var SECTION_STROKE = "aaaaaa";
+                var SECTION_STROKE_WIDTH = 1;
+                var EASING = 'bounce';
+                var DURATION = 1000; //ms
+                var TASK_TOP_MARGIN = 26;
+                
+                var TASK_WIDTH          = 90;
+                var TASK_HEIGHT         = 70;
+                var TASK_RADIUS         = 3;
+                var TASK_FILL           = "fff";
+                var TASK_FILL_OPACITY   = 0.6;
+                var TASK_STROKE         = "009";
+                var TASK_STROKE_WIDTH   = 1;
+                var TASK_X_PADDING      = 4;
+                var TASK_Y_PADDING      = 4;
+                var TASK_X_MARGIN       = (TILE_WIDTH - TASK_WIDTH) / 2;
+                var TASK_Y_MARGIN       = 6;
+                var TASK_ICON_WIDTH     = 20;
+                var TASK_ICON_HEIGHT    = 20;
+                var START_X = START_Y   = 10;
+
+                var TASK_TITLE_WIDTH    = TASK_WIDTH - 2 * TASK_X_PADDING;
+                var TASK_ICON_XOFFSET   = TASK_WIDTH - TASK_ICON_WIDTH - TASK_X_PADDING;
+                
+                function add_to_family(parent, child) {
+                    parent.children[parent.children.length] = child;
+                    child.parent = parent;
+                }
+                
+                function Task(task) {
+                    var newTask = paper
+                        .rect(START_X, START_Y, TASK_WIDTH, TASK_HEIGHT, TASK_RADIUS)
+                        .attr({fill: "#" + TASK_FILL, "fill-opacity": TASK_FILL_OPACITY, stroke: "#" + TASK_STROKE, "stroke-width": TASK_STROKE_WIDTH});
+                    newTask.task = task;
+                    
+                    var newIcon = paper
+                        .image("{{MEDIA_URL}}img/gvh.jpg", START_X + TASK_ICON_XOFFSET, START_Y + TASK_Y_PADDING, TASK_ICON_WIDTH, TASK_ICON_HEIGHT);
+                    newIcon.xOffset = TASK_ICON_XOFFSET;
+                    newIcon.yOffset = TASK_Y_PADDING;
+                    
+                    var newName = paper
+                        .text(START_X + TASK_X_PADDING, START_Y + TASK_Y_PADDING, task.user.username)
+                        .attr({'font-size': SMALLISH_FONT_SZ, 'text-anchor':'start'})
+                    newName.xOffset = TASK_X_PADDING;
+                    newName.yOffset = TASK_Y_PADDING + SMALLISH_FONT_SZ/2;
+
+                    var titleXOffset = TASK_X_PADDING;
+                    var newTitle = paper
+                        .text(START_X + titleXOffset, 0, task.title)
+                        .attr({'font-size': SMALL_FONT_SZ, 'text-anchor':'start'})
+                    adjust_width(newTitle, TASK_TITLE_WIDTH);
+                    titleYOffset = TASK_Y_PADDING * 2 + TASK_ICON_HEIGHT + newTitle.getBBox().height / 2;
+                    newTitle.attr({'y': titleYOffset })
+                    newTitle.xOffset = titleXOffset;
+                    newTitle.yOffset = titleYOffset;
+                                        
+                    newTask.tile = null;
+                    //var daSet = paper.set(newTask, newIcon);
+                    //var opts = {'drag_obj': daSet};
+                    newTask.draggable();
+                    newTask.children = [];
+                    add_to_family(newTask, newIcon);
+                    add_to_family(newTask, newTitle);
+                    add_to_family(newTask, newName);
+                    newTask.dragStart = function( x, y, mousedownevent, mousemoveevent ) {
+                        if (newTask.tile) {
+                            newTask.tile.removeTask(this);
+                        };
+                        newTask.toFront();
+                        for ( var i=0, j = newTask.children.length; i < j; i++ )
+                            newTask.children[i].toFront();
+                        return newTask;
+                    }
+                    newTask.dragUpdate = function(dragging_over, dx, dy, event) {
+                         newTask.translate(dx, dy);
+                         for ( var i=0, j = newTask.children.length; i < j; i++ )
+                            newTask.children[i].translate(dx, dy);
+                         //$('#debuginfo').html('dx: ' + dx + ' dy: ' + dy)
+                    };
+                    newTask.dragFinish = function(dropped_on, x, y, event) {
+                        if (dropped_on.raphael.tasks == undefined)
+                            if (dropped_on.raphael.children != undefined)
+                                dropped_on = dropped_on.raphael.tile.node;
+                            else if (dropped_on.raphael.parent != undefined)
+                                dropped_on = dropped_on.raphael.parent.node.raphael.tile.node;
+                            else
+                                dropped_on = this.leaving.node;
+                        dropped_on.raphael.addTask(this);
+                        dropped_on.raphael.update(this.leaving);
+                    };
+                    newTask.find_tile = function() {
+                        var tile_id = newTask.task.tile.id;
+                        for ( var i=0, len=paper.canvas.childNodes.length; i < len; i++ )
+                            if (paper.canvas.childNodes[i].raphael != undefined)
+                                if ('tile_' + tile_id == paper.canvas.childNodes[i].raphael.name)
+                                    return paper.canvas.childNodes[i].raphael;
+                    };
+                    return newTask;
+                }
+
+                $.fn.serializeObject = function() {
+                    var o = {}; 
+                    var a = this.serializeArray();
+                    $.each(a, function() {
+                        if (o[this.name]) {
+                            if (!o[this.name].push) {
+                                o[this.name] = [o[this.name]];
+                            }
+                            o[this.name].push(this.value || '');
+                        } else {
+                            o[this.name] = this.value || '';
+                        }
+                    });
+                    return o;
+                };
+                
+                $('form').submit(function() {                
+                    var send_obj = {
+                        contentType : 'application/json',
+                        type        : 'POST',
+                        url         : '{% url task_handler %}',
+                        data        : JSON.stringify($('form').serializeObject()),
+                        success     : function(task){
+                            var n = Task(task); 
+                            var my_tile = n.find_tile();
+                            if (my_tile) {
+                                my_tile.addTask(n);
+                                my_tile.update(n.leaving, true);
+                            };
+                        }
+                    };
+                    $.ajax(send_obj); 
+    
+                    return false;
+                });
+
+                function half_white(color) {
+                    if (color == 'ffffff')
+                        return '9dccfe';
+                    var result = '';
+                    for (var i=0; i<3; i++) {
+                        part = color.slice(i*2, i*2 + 2);
+                        var hex = +('0x' + part);
+                        //half_way = Math.round(((+'0xff' - hex) * 3 / 4 + hex));
+                        half_way = Math.round(hex * 4 / 5);
+                        result += half_way.toString(16);
+                    }
+                    return result;
+                }
+                function Tile(tile, section, section_count, section_tile_count, total_tile_count, tile_order) {
+                    var x = total_tile_count * TILE_WIDTH + section_count * SECTION_SEPARATION + SECTION_SEPARATION + TILE_WIDTH * tile_order;
+                    var y = SECTION_HEIGHT + SECTION_TOP  - OVERLAP;
+                    var width = section.wide ? 2 * TILE_WIDTH : TILE_WIDTH;
+                    var height = TILE_HEIGHT;
+                    var newTile = paper
+                        .rect(x, y, width, height, RADIUS)
+                        .attr({stroke: "#" + TILE_STROKE, "stroke-width": SECTION_STROKE_WIDTH, fill: "270-#" + section.color + "-#" + half_white(section.color)});
+                    var newTitle = paper
+                        .text(x + TILE_WIDTH / 2, y + MEDIUM_FONT_SZ, tile.title)
+                        .attr({'font-size': MEDIUM_FONT_SZ});
+                    newTile.name = 'tile_' + tile.id;
+                    newTile.tasks = [];
+                    newTile.tile = tile;
+                    newTile.addTask = function(task) {
+                        //task.animate({ x: this.attrs.x +10, y: this.task_count * 60 + this.attrs.y + 10 }, 1000, 'bounce');
+                        this.tasks.push(task);                    
+                        //$('#debuginfo').append('stack - this.task_count:' + this.task_count + '<br/>') ;
+                        task.tile = this;
+
+                    };
+                    newTile.removeTask = function(task) {
+                        for ( var i=0; i < this.tasks.length; i++ )
+                            if (this.tasks[i] == task) {
+                                this.tasks.splice(i, 1);                    
+                            };
+                        //$('#debuginfo').append('stack - this.task_count:' + this.task_count + '<br/>') ;
+                        task.leaving = task.tile;
+                        task.tile = null;
+                    };
+                    newTile.update = function(leaving, no_callback) {
+                        //$('#debuginfo').append('this.name: ' + this.name + '<br/>') ;
+                        //$('#debuginfo').append('this.tasks: ' + this.tasks + '<br/>') ;
+                        var wide = this.tile.section.wide;
+                        var json_data = [];
+                        for (var i=0; i < this.tasks.length; i++) {
+                            var task = this.tasks[i].task;
+                            task.tile = this.tile;
+                            task.order = (i+1)*10;
+                            json_data[json_data.length] = task;
+                            if (i == 0)
+                                this.tasks[i].animate({
+                                    x: this.attrs.x + TASK_X_MARGIN,
+                                    y: i * (TASK_HEIGHT + TASK_Y_MARGIN) + this.attrs.y + TASK_TOP_MARGIN
+                                }, DURATION, EASING);
+                            else {
+                                this.tasks[i].animateWith(
+                                    this.tasks[0], wide ? {
+                                        x: this.attrs.x + TASK_X_MARGIN + (2 * TASK_X_MARGIN + TASK_WIDTH) * (i%2),
+                                        y: Math.floor(i/2) * (TASK_HEIGHT + TASK_Y_MARGIN) + this.attrs.y + TASK_TOP_MARGIN
+                                    } : {
+                                        x: this.attrs.x + TASK_X_MARGIN,
+                                        y: i * (TASK_HEIGHT + TASK_Y_MARGIN) + this.attrs.y + TASK_TOP_MARGIN
+                                    }, DURATION, EASING
+                                );
+                            }
+                            for ( var j=0, k = this.tasks[i].children.length; j < k; j++ )
+                                this.tasks[i].children[j].animateWith(
+                                    this.tasks[0], wide ? {
+                                        x: this.attrs.x + TASK_X_MARGIN + this.tasks[i].children[j].xOffset  + (2 * TASK_X_MARGIN + TASK_WIDTH) * (i%2),
+                                        y: Math.floor(i/2) * (TASK_HEIGHT + TASK_Y_MARGIN) + this.attrs.y + TASK_TOP_MARGIN + this.tasks[i].children[j].yOffset
+                                    } : {
+                                        x: this.attrs.x + TASK_X_MARGIN + this.tasks[i].children[j].xOffset,
+                                        y: i * (TASK_HEIGHT + TASK_Y_MARGIN) + this.attrs.y + TASK_TOP_MARGIN + this.tasks[i].children[j].yOffset
+                                    }, DURATION, EASING
+                                );
+                        };
+                        if (leaving) {
+                            //$('#debuginfo').append('leaving.name' + leaving.name + '<br/>') ;
+                            //$('#debuginfo').append('leaving.tasks' + leaving.tasks + '<br/>') ;
+                            if (leaving != this) {
+                                wide = leaving.tile.section.wide;
+                                for (var i=0; i < leaving.tasks.length; i++) {
+                                    leaving.tasks[i].animateWith(this.tasks[0], wide ? {
+                                        x: leaving.attrs.x + TASK_X_MARGIN + (2 * TASK_X_MARGIN + TASK_WIDTH) * (i%2),
+                                        y: Math.floor(i/2) * (TASK_HEIGHT + TASK_Y_MARGIN) + leaving.attrs.y + TASK_TOP_MARGIN
+                                    } : {
+                                        x: leaving.attrs.x + TASK_X_MARGIN,
+                                        y: i * (TASK_HEIGHT + TASK_Y_MARGIN) + leaving.attrs.y + TASK_TOP_MARGIN
+                                    }, DURATION, EASING);
+                                    for ( var j=0, k = leaving.tasks[i].children.length; j < k; j++ )
+                                        leaving.tasks[i].children[j].animateWith(
+                                            this.tasks[0], wide ? {
+                                                x: leaving.attrs.x + TASK_X_MARGIN + leaving.tasks[i].children[j].xOffset + (2 * TASK_X_MARGIN + TASK_WIDTH) * (i%2),
+                                                y: Math.floor(i/2) * (TASK_HEIGHT + TASK_Y_MARGIN) + leaving.attrs.y + TASK_TOP_MARGIN + leaving.tasks[i].children[j].yOffset
+                                            } : {
+                                                x: leaving.attrs.x + TASK_X_MARGIN + leaving.tasks[i].children[j].xOffset,
+                                                y: i * (TASK_HEIGHT + TASK_Y_MARGIN) + leaving.attrs.y + TASK_TOP_MARGIN + leaving.tasks[i].children[j].yOffset
+                                            }, DURATION, EASING
+                                        );
+                                }
+                            }
+                        }
+                        if (!no_callback) {
+                            var send_obj = {
+                                contentType : 'application/json',
+                                type        : 'PUT',
+                                url         : '{% url task_handler %}',
+                                data        : JSON.stringify(json_data),
+                                success     : function(msg){
+                                    //alert(msg);
+                                }
+                            };
+                            $.ajax(send_obj);
+                        }
+                        
+                    };
+                    return newTile;
+                };
+                function adjust_width(txt, width) {
+                    var txt_arr = txt.attrs.text.split(' ');
+                    var txt_arr_len = txt_arr.length;
+                    var i = 0;
+                    var new_txt_arr = [];
+                    var new_txt;
+                    for (var j=1; j <= txt_arr_len; j++) {
+                        new_txt = txt_arr.slice(i, j).join(' ');
+                        txt.attr({'text': new_txt});
+                        w = txt.getBBox().width;
+                        if (w > width) {
+                            new_txt_arr[new_txt_arr.length] = txt_arr.slice(i, j-1).join(' ');
+                            i = --j;
+                        }
+                    };
+                    new_txt_arr[new_txt_arr.length] = new_txt;
+                    var adjusted_txt = new_txt_arr.join('\n');
+                    txt.attr({'text': adjusted_txt});
+                }
+                function Section(section, section_count, section_tile_count, total_tile_count) {
+                    var x = total_tile_count * TILE_WIDTH + section_count * SECTION_SEPARATION + SECTION_SEPARATION;
+                    var y = SECTION_TOP;
+                    var width = section_tile_count * TILE_WIDTH * (section.wide ? 2 : 1)
+                    var height = SECTION_HEIGHT;
+                    var newSection = paper
+                        .rect(x, y, width, height, RADIUS)
+                        .attr({stroke: "#" + SECTION_STROKE, "stroke-width": SECTION_STROKE_WIDTH, fill: "#fff"});
+                    var newTitle = paper
+                        .text(x + 8, y + MEDIUM_FONT_SZ, section.title)
+                        .attr({'font-size': MEDIUM_FONT_SZ, 'text-anchor':'start'});
+                    var newSubTitle = paper
+                        .text(x + 8, y + MEDIUM_FONT_SZ + SMALL_FONT_SZ * 2, section.subtitle)
+                        .attr({'font-size': SMALL_FONT_SZ, 'text-anchor':'start'});
+                    adjust_width(newSubTitle, width - HORIZONTAL_MARGIN * 2);
+                    newSubTitle.attr({'y': y + MEDIUM_FONT_SZ + SMALL_FONT_SZ + newSubTitle.getBBox().height / 2})
+                };
+                function Board(board) {
+                    theBoard = board;
+                    var newSection = paper
+                        .text(SECTION_SEPARATION, SECTION_TOP / 2, board.title)
+                        .attr({'font-size': BIG_FONT_SZ, 'text-anchor':'start'});
+                };
+                function display_data(data) {
+                    var s = [];
+                    for ( var i=0, len = data.length; i < len; i++ ) {
+                        s[s.length] = '\n';
+                        for (key in data[i])
+                            s[s.length] = key + ': ' + data[i][key];
+                    };
+                    return s.join(', ');
+                }
+                var paper = Raphael('content', "100%", "100%");
+                paper.canvas.raphael = paper; // .raphael is set for elements but not for the canvas
+                paper.name = "paper";
+                // A simple movable shape. It has a transparent filled background so
+                // you can drag by clicking in the centre, but still see through:
+                //var moveable2 = Task(250, 160);
+                //var moveable3 = Task(250, 220);
+                //var moveable4 = Task(250, 280);
+                //var moveable5 = Task(250, 340);
+                //var band1 = Band(1, 10, 10);
+                //var band2 = Band(2, 120, 10);
+                //paper
+                //    .rect(200, 200, 80, 50, 5)
+                //    .attr({fill: "#000", "fill-opacity": 0, stroke: "#009", "stroke-width": 3});
+                //moveable.name = "moveable";
+                //moveable.draggable()  ;
+                //moveable.dragStart = function( x, y, mousedownevent, mousemoveevent ) {
+                //    this.toFront();
+                //    return this;
+                //}
+                //moveable.dragUpdate = function(dragging_over, dx, dy, event) {
+                //    $('#debuginfo').html(dragging_over.toString());
+                //     moveable.translate(dx, dy);
+                //};
+                //moveable.dragFinish = function(dropped_on, x, y, event) {
+                //    if (dropped_on.nodeName == rect.node.nodeName) {
+                //        rect.stack(moveable);
+                //    }
+                //};
+                //$(moveable.node).bind('click', function(e) {
+                //    alert('x:' + moveable.attrs.x + 'y:' + moveable.attrs.y);
+                //});
+                //moveable.name = "moveable";
+                //moveable.node.name = "moveable.node";
+                var tasks, tiles, sections;
+                $.getJSON('{% url tile_handler %}', function(tiles){
+                    var section_id = null;
+                    var section_count = 0;
+                    var total_tile_count = 0;
+                    var tile_order = 0;
+                    Board(tiles[0].section.board);
+                    for (var i=0, len=tiles.length; i < len; i++) {
+                        var tile = tiles[i];
+                        if (section_id != tile.section.id) {
+                            Section(tile.section, section_count, tile.tiles_in_section, total_tile_count);
+                            section_id = tile.section.id;
+                            section_count += 1;
+                            total_tile_count += tile.section.wide ? tile.tiles_in_section * 2 : tile.tiles_in_section;
+                            tile_order = 0;
+                        }
+                        //tiles[i].raphael = Tile(tile, tile.section, section_count-1, tile.tiles_in_section, total_tile_count - tile.tiles_in_section * (tile.section.wide ? 2 : 1), tile_order);
+                        Tile(tile, tile.section, section_count-1, tile.tiles_in_section, total_tile_count - tile.tiles_in_section * (tile.section.wide ? 2 : 1), tile_order);
+                        tile_order += 1;
+                    };
+                    $.getJSON('{% url task_handler %}', function(data){
+                        var tasks = data.tasks;
+                        var theUsers = data.users;
+                        $.each(theUsers, function(i, user) {
+                            $('#user_id').append(
+                                $('<option/>')
+                                    .text(user.username)
+                                    .val(user.id)
+                            )
+                        });
+                        $.each(tasks, function(i, task){
+                            var n = Task(task); 
+                            var my_tile = n.find_tile();
+                            if (my_tile) {
+                                my_tile.addTask(n);
+                                my_tile.update(n.leaving);
+                            };
+                        });
+                    });
+                });
+                
+                // fancybox init
+                $("a#inline").fancybox({
+                    'scrolling' : 'no'
+                });                    
+            });
+        </script>
+    </body>
+</html>

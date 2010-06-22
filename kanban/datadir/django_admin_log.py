@@ -1,0 +1,26 @@
+table = 'django_admin_log'
+fields = ['id', 'action_time', 'user_id', 'content_type_id', 'object_id', 'object_repr', 'action_flag', 'change_message']
+#default item format: "fieldname":("type", "value")
+default = {}
+records = [
+[1, '2010-05-01 14:49:56', 1, 9, u'1', u'Board object', 1, u'']
+[2, '2010-05-01 14:51:21', 1, 9, u'1', u'Board object', 2, u'Added section "Section object". Added section "Section object".']
+[3, '2010-05-01 14:56:58', 1, 10, u'5', u'Section object', 2, u'Added tile "Tile object".']
+[4, '2010-05-01 15:07:52', 1, 10, u'1', u'Decided', 2, u'Added tile "In progress". Added tile "Next".']
+[5, '2010-05-01 15:08:23', 1, 10, u'2', u'Analysis / Prototype', 2, u'Added tile "In progress". Added tile "Done".']
+[6, '2010-05-01 15:08:57', 1, 10, u'3', u'Development', 2, u'Added tile "In progress". Added tile "Test". Added tile "Done".']
+[7, '2010-05-01 15:09:22', 1, 10, u'4', u'Deployment', 2, u'Added tile "In progress". Added tile "Done".']
+[8, '2010-05-07 08:00:28', 1, 12, u'1', u'Get it done!', 1, u'']
+[9, '2010-05-08 14:24:33', 1, 11, u'1', u'Init', 2, u'Changed title.']
+[10, '2010-05-08 14:27:09', 1, 10, u'5', u'Done Done!', 2, u'Changed title for tile "".']
+[11, '2010-05-11 03:26:29', 1, 10, u'6', u'Shortlist', 1, u'']
+[12, '2010-05-14 14:57:21', 1, 9, u'1', u'Akvo kanban', 2, u'Changed wide and color for section "Shortlist". Changed color for section "Decided". Changed color for section "Analysis / Prototype". Changed color for section "Development". Changed color for section "Deployment". Changed wide and color for section "Done Done!".']
+[13, '2010-05-14 14:58:45', 1, 12, u'3', u'Fun fun fun!', 1, u'']
+[14, '2010-05-14 16:51:07', 1, 12, u'1', u'Foo', 2, u'Changed title.']
+[15, '2010-05-14 16:51:19', 1, 12, u'2', u'Bar', 2, u'Changed title.']
+[16, '2010-05-14 16:51:38', 1, 12, u'3', u'Baz', 2, u'Changed title.']
+[17, '2010-05-14 16:53:12', 1, 12, u'1', u'Foo', 2, u'Changed title.']
+[18, '2010-05-14 16:54:50', 1, 12, u'2', u'Bar', 2, u'Changed title.']
+[19, '2010-05-14 16:55:04', 1, 12, u'3', u'Baz', 2, u'Changed title.']
+[20, '2010-05-15 16:09:02', 1, 3, u'1', u'gabriel', 2, u'Changed first_name, last_name and email.']
+]

@@ -1,0 +1,3 @@
+[submodule "kanban/mediaroot/raphaelle"]
+	path = kanban/mediaroot/raphaelle
+	url = git@github.com:zzgvh/Raphaelle.git
